@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart IVR System</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to right, #e6ecf5, #f7f9fc);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 380px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0px 8px 25px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2e7d32;
+            color: white;
+            padding: 18px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .chat {
+            height: 420px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f5f7fb;
+        }
+
+        .msg {
+            padding: 12px 16px;
+            margin: 10px;
+            border-radius: 18px;
+            max-width: 75%;
+            font-size: 14px;
+        }
+
+        .user {
+            background: #d6eaff;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .system {
+            background: #e8f5e9;
+        }
+
+        .footer {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            margin-left: 8px;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 20px;
+            background: #2e7d32;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1b5e20;
+        }
+
+        .start-btn {
+            width: 100%;
+            background: #1976d2;
+            border-radius: 0;
+        }
+
+        .quick-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 10px;
+            gap: 5px;
+        }
+
+        .quick-buttons button {
+            flex: 1 1 45%;
+            background: #eeeeee;
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">📞 Smart IVR Assistant</div>
+
+    <button class="start-btn" onclick="startCall()">Start Call</button>
+
+    <div id="chat" class="chat"></div>
+
+    <div class="quick-buttons">
+        <button onclick="quickInput('1')">1 Booking</button>
+        <button onclick="quickInput('2')">2 Train</button>
+        <button onclick="quickInput('3')">3 PNR</button>
+        <button onclick="quickInput('4')">4 Cancel</button>
+        <button onclick="quickInput('5')">5 Healthcare</button>
+    </div>
+
+    <div class="footer">
+        <input type="text" id="inputBox" placeholder="Enter option or type..." />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+</div>
+
+<script>
+let session_id = null;
+let currentFlow = null;
+let source = "";
+
+// 🔊 VOICE
+function speak(text) {
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "en-IN";
+    window.speechSynthesis.speak(speech);
+}
+
+// 💬 ADD MESSAGE
+function addMessage(text, type) {
+    const chat = document.getElementById("chat");
+    chat.innerHTML += `<div class="msg ${type}">${text}</div>`;
+    chat.scrollTop = chat.scrollHeight;
+}
+
+// 📞 START CALL
+function startCall() {
+    fetch("https://ai-enabled-conversational-ivr-h9n8.onrender.com/ivr/start", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({caller_number: "User"})
+    })
+    .then(res => res.json())
+    .then(data => {
+        session_id = data.session_id;
+
+        let menu = `
+        Welcome to Smart IVR System
+
+        Press:
+        1 - Ticket Booking
+        2 - Train Information
+        3 - PNR Status
+        4 - Ticket Cancellation
+        5 - Healthcare Support
+        `;
+
+        addMessage(menu, "system");
+        speak("Welcome to Smart IVR system. Press 1 for booking, 2 for train, 3 for PNR, 4 for cancellation, 5 for healthcare.");
+    })
+    .catch(() => {
+        addMessage("Backend not running. Please start server.", "system");
+    });
+}
+
+// QUICK BUTTONS
+function quickInput(val) {
+    document.getElementById("inputBox").value = val;
+    sendMessage();
+}
+
+// 📩 SEND MESSAGE
+function sendMessage() {
+    const input = document.getElementById("inputBox");
+    const userText = input.value.trim();
+    input.value = "";
+
+    if (!userText) return;
+
+    addMessage(userText, "user");
+
+    if (userText === "1") {
+        addMessage("Ticket booking service selected.", "system");
+        speak("Ticket booking selected");
+    }
+
+    else if (userText === "2") {
+        currentFlow = "ask_source";
+        addMessage("Please enter source station", "system");
+        speak("Please enter source station");
+    }
+
+    else if (userText === "3") {
+        addMessage("Please enter your PNR number", "system");
+        speak("Please enter your PNR number");
+
+        setTimeout(() => {
+            addMessage("Your ticket is confirmed", "system");
+            speak("Your ticket is confirmed");
+        }, 1000);
+    }
+
+    else if (userText === "4") {
+        addMessage("Your ticket has been cancelled successfully.", "system");
+        speak("Ticket cancelled successfully");
+    }
+
+    else if (userText === "5") {
+        addMessage("Connecting to healthcare support.", "system");
+        speak("Connecting to healthcare support");
+    }
+
+    else if (currentFlow === "ask_source") {
+        source = userText;
+        currentFlow = "ask_destination";
+
+        addMessage("Please enter destination", "system");
+        speak("Please enter destination");
+    }
+
+    else if (currentFlow === "ask_destination") {
+        addMessage(`Available trains from ${source} to ${userText}`, "system");
+        speak(`Showing trains from ${source} to ${userText}`);
+        currentFlow = null;
+    }
+
+    else {
+        addMessage("Invalid input. Please select a valid option.", "system");
+        speak("Invalid input");
+    }
+}
+
+// ⌨️ ENTER KEY
+document.getElementById("inputBox").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMessage();
+    }
+});
+</script>
+
+</body>
+</html>
