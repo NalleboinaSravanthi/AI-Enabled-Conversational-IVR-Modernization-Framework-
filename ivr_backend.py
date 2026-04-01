@@ -202,5 +202,5 @@ def handle_input(request: InputRequest):
 # ROOT API (Health Check)
 
 @app.get("/")
-def root():
-    return {"status": "IRCTC IVR Backend Running Successfully"}
+def home():
+    return {"message": "API is working"}
