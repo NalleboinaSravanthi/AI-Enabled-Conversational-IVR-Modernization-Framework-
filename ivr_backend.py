@@ -26,6 +26,12 @@ import uuid
 
 app = FastAPI(title="IRCTC IVR Backend Simulator")
 
+@app.get("/")
+def home():
+    return {"message": "API is working"}
+
+# your remaining code continues...
+
 # ---------------------------------------------------
 # REQUEST MODELS
 # ---------------------------------------------------
