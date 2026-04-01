@@ -20,30 +20,14 @@ FLOW OF THIS IVR SYSTEM:
       - hangup → end call
 """
 
-# ---------------------------------------------------
-# IMPORTS
-# ---------------------------------------------------
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uuid
 
-# ---------------------------------------------------
-# CREATE FASTAPI APP
-# ---------------------------------------------------
-
 app = FastAPI(title="IRCTC IVR Backend Simulator")
-
-
-# ---------------------------------------------------
-# ROOT API (HEALTH CHECK)
-# ---------------------------------------------------
-# This endpoint is used to check whether API is running
-
 @app.get("/")
 def home():
     return {"message": "API is working"}
-
 
 # ---------------------------------------------------
 # REQUEST MODELS
@@ -53,7 +37,6 @@ def home():
 class StartCallRequest(BaseModel):
     caller_number: str = "Simulator"
 
-
 # When user presses digit, this model receives:
 # session_id (unique call id)
 # digit (pressed key)
@@ -61,10 +44,7 @@ class InputRequest(BaseModel):
     session_id: str
     digit: str
 
-
-# ---------------------------------------------------
 # SESSION STORAGE (Temporary Memory)
-# ---------------------------------------------------
 # Stores active call sessions
 # Example:
 # sessions = {
@@ -73,10 +53,7 @@ class InputRequest(BaseModel):
 
 sessions = {}
 
-
-# ---------------------------------------------------
 # IVR MENU STRUCTURE (STATE MACHINE)
-# ---------------------------------------------------
 # Each menu contains:
 # - prompt → message to user
 # - options → digit mapping to action
@@ -124,22 +101,18 @@ MENUS = {
     }
 }
 
-
-# ---------------------------------------------------
 # START CALL API
-# ---------------------------------------------------
-# This API initializes a new call session
 
 @app.post("/ivr/start")
 def start_call(request: StartCallRequest):
 
-    # 1️⃣ Generate unique session ID
+    # 1️ Generate unique session ID
     session_id = str(uuid.uuid4())
 
-    # 2️⃣ Store session with initial state = main menu
+    # 2️ Store session with initial state = main menu
     sessions[session_id] = {"current_menu": "main"}
 
-    # 3️⃣ Return main menu prompt
+    # 3️ Return main menu prompt
     return {
         "status": "call_started",
         "session_id": session_id,
@@ -147,42 +120,38 @@ def start_call(request: StartCallRequest):
         "prompt": MENUS["main"]["prompt"]
     }
 
-
-# ---------------------------------------------------
 # HANDLE USER INPUT
-# ---------------------------------------------------
-# This API processes user key press
 
 @app.post("/ivr/input")
 def handle_input(request: InputRequest):
 
-    # 4️⃣ Check if session exists
+    # 4️ Check if session exists
     session = sessions.get(request.session_id)
 
     if not session:
         return {"status": "error", "message": "Invalid session ID"}
 
-    # 5️⃣ Get current menu
+    # 5️ Get current menu
     current_menu = session["current_menu"]
     menu_data = MENUS[current_menu]
 
-    # 6️⃣ Validate digit
+    # 6️ Validate digit
     if request.digit not in menu_data["options"]:
         return {
             "status": "invalid_option",
             "prompt": menu_data["prompt"]
         }
 
-    # 7️⃣ Identify action
+    # 7️ Identify action
     selected_option = menu_data["options"][request.digit]
     action = selected_option["action"]
 
-    # ---------------------------------------------------
-    # ACTION HANDLING
-    # ---------------------------------------------------
-
-    # If action is "goto" → Move to another menu
+    
+    # If action is "goto"
+    # Move to another menu
+    
     if action == "goto":
+        
         new_menu = selected_option["target"]
         session["current_menu"] = new_menu
 
@@ -192,7 +161,10 @@ def handle_input(request: InputRequest):
             "prompt": MENUS[new_menu]["prompt"]
         }
 
-    # If action is "end" → End call
+    
+    # If action is "end"
+    # End call and delete session
+
     elif action == "end":
         message = selected_option["message"]
         del sessions[request.session_id]
@@ -202,7 +174,10 @@ def handle_input(request: InputRequest):
             "message": message
         }
 
-    # If action is "agent" → Transfer call
+    
+    # If action is "agent"
+    # Transfer call
+    
     elif action == "agent":
         del sessions[request.session_id]
 
@@ -211,7 +186,9 @@ def handle_input(request: InputRequest):
             "message": "Please wait while we connect you to a customer support agent."
         }
 
-    # If action is "hangup" → End call
+    # If action is "hangup"
+    # End call
+
     elif action == "hangup":
         del sessions[request.session_id]
 
@@ -219,3 +196,9 @@ def handle_input(request: InputRequest):
             "status": "call_ended",
             "message": "Thank you for calling IRCTC. Goodbye."
         }
+
+# ROOT API (Health Check)
+
+@app.get("/")
+def root():
+    return {"status": "IRCTC IVR Backend Running Successfully"}
